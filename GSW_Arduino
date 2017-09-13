@@ -1,0 +1,164 @@
+/*
+ set to a modifiable variable for 
+ storing which state the program is in. 
+ State 0 = sensing , 1 = crash, 2 = Left
+ turn , 3 = right turn, 4 = breaking. 
+*/
+
+volatile int state = 0; 
+
+const int fsensor[] = {18,19,20,21};     
+// An array of pins that associate with the force sensors 
+// variables will change:
+
+const int led[] = {22,24,26,28,30,32,34,36,38}; 
+// an array of pins that associate with LEFT, RIGHT, BACK , RGB LED'S
+int i = 0;
+struct rgbLED
+{
+  int r,g,b;
+};
+struct bikeLight
+{
+  rgbLED LT,RT,Rear;
+};
+rgbLED lT={0,1,2};
+rgbLED rT={3,4,5};
+rgbLED r ={6,7,8};
+bikeLight bL = {lT,rT,r};
+void setup() 
+{
+    //left RGB
+    pinMode(led[bL.LT.r],OUTPUT);
+    pinMode(led[bL.LT.g],OUTPUT);
+    pinMode(led[bL.LT.b],OUTPUT);
+
+    //right RGB
+    pinMode(led[bL.RT.r],OUTPUT);
+    pinMode(led[bL.RT.g],OUTPUT);
+    pinMode(led[bL.RT.b],OUTPUT);
+    
+    //Rear RGB
+    pinMode(led[bL.Rear.r],OUTPUT);
+    pinMode(led[bL.Rear.g],OUTPUT);
+    pinMode(led[bL.Rear.b],OUTPUT);
+
+    
+    // initialize the force sensor pins as an input:    
+    pinMode(fsensor[0], INPUT);// LEFT Force sensor
+    pinMode(fsensor[1], INPUT);// RIGHT Force sensor
+    pinMode(fsensor[2], INPUT);// BACK Force sensor
+    pinMode(fsensor[3], INPUT);// FRONT Force sensor
+    pinMode(2, INPUT);// LEFT TURN SIGNAL
+    
+    // Attach an interrupt to the ISR vector
+    attachInterrupt(5, pin_18_ISR_3_BREAK, FALLING); //PIN 18 = Interupt 5
+    attachInterrupt(4, pin_19_ISR_3_RTURN, FALLING); //PIN 19 = Interupt 4
+    attachInterrupt(3, pin_20_ISR_3_LTURN, LOW); //PIN 20 = Interupt 3
+    attachInterrupt(2, pin_21_ISR_2_FSENS, RISING ); //PIN 21 = Interupt 2
+  
+    
+    Serial.begin (9600); 
+}
+
+void loop() 
+{
+  // Serial.print(state);   
+   //Serial.print("\n");   
+  switch (state) 
+  {
+    case 1: // Crash detected
+      {
+      for ( i=0; i<=8; i++) // itterate through all LEDS
+      { // toggle leds for 50 ms
+        digitalWrite(led[i],HIGH);
+        delay (25);
+        digitalWrite(led[i],LOW); 
+        delay (25);
+      }          
+      }
+      break;
+    case 2: // left turn detected
+      { // blink red + green = yellow turn signals
+      digitalWrite(led[bL.LT.r],HIGH);
+      digitalWrite(led[bL.LT.g],HIGH);
+      delay (250);
+      digitalWrite(led[bL.LT.r],LOW);
+      digitalWrite(led[bL.LT.g],LOW);
+      delay (250);
+      }
+      break;
+    case 3: // right turn detected
+      { // blink red + green = yellow turn signals
+      digitalWrite(led[bL.RT.r],HIGH);
+      digitalWrite(led[bL.RT.g],HIGH);
+      delay (250);
+      digitalWrite(led[bL.RT.r],LOW);
+      digitalWrite(led[bL.RT.g],LOW);
+      delay (250);
+      }
+      break;
+    case 4: // breaking detected
+      { // blink red + green = yellow turn signals
+      digitalWrite(led[bL.Rear.r],HIGH);
+      digitalWrite(led[bL.RT.r],HIGH);
+      digitalWrite(led[bL.LT.r],HIGH);
+      delay (250);
+      digitalWrite(led[bL.Rear.r],LOW);
+      digitalWrite(led[bL.RT.r],LOW);
+      digitalWrite(led[bL.LT.r],LOW);
+      delay (250);
+      
+      }
+      break;
+    default: 
+      // if nothing else matches, do the default it is optional
+    break;
+  }
+}
+
+// Interupts Handlers
+void  pin_18_ISR_3_BREAK() 
+{
+  if(state == 0)
+  {
+    state =4;
+    Serial.print("Break Detected\n");    
+  }
+  else if(state ==4)
+  {
+    state =0;
+  }
+}
+void pin_19_ISR_3_RTURN() 
+{
+ if(state !=2)
+  {
+    state =3;
+   Serial.print("Right Turn Signal Detected.\n"); 
+  }
+  else if (state ==3)
+  {
+    state =0; 
+    Serial.print("Disableing Right Turn Signal.\n"); 
+  }
+}
+
+void pin_20_ISR_3_LTURN() 
+{
+  if(state !=2)
+  {
+    state =2;
+   Serial.print("Left Turn Signal Detected.\n"); 
+  }
+  else if (state ==2)
+  {
+    state =0; 
+    Serial.print("Disableing Left Turn Signal.\n"); 
+  }
+}
+void pin_21_ISR_2_FSENS() 
+{
+  state =1;
+  Serial.print("Impact Detected on by Force a sensor\n");  
+}
